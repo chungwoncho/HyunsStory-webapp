@@ -1,4 +1,4 @@
-// Domain: 전화번호 · 비밀번호 규칙. 브라우저 · Supabase 를 모르는 순수 함수만 둔다.
+// Domain: 전화번호 · 비밀번호 규칙. 브라우저 · 서버 · DB 를 모르는 순수 함수만 둔다 (웹과 서버가 함께 쓴다).
 
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 72;
@@ -24,7 +24,7 @@ export function normalizePhone(input) {
   return /^01[016789]\d{7,8}$/.test(digits) ? digits : null;
 }
 
-// 01012345678 → +821012345678 (Supabase Auth 가 받는 국제 표기)
+// 01012345678 → +821012345678 (해외 SMS 업체가 받는 국제 표기)
 export const toE164 = (phone) => `+82${phone.slice(1)}`;
 
 // 입력 중 표기: 01012345678 → 010 - 1234 - 5678 (10자리는 010 - 123 - 4567)

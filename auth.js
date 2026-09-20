@@ -1,6 +1,5 @@
 import { showToast } from './toast.js';
 import { authGateway } from './di.js';
-import { AUTH_STORAGE_KEY, SMS_CODE_TTL_SECONDS } from './config.js';
 import {
   PASSWORD_MIN, formatPhone, formatCountdown, hasNonDigits, isVerificationCode, normalizePhone,
 } from './domain/phone.js';
@@ -21,6 +20,8 @@ const DIGITS_ONLY = '숫자만 입력해 주세요.';
 const INVALID_PHONE = '전화 번호를 정확히 입력해 주세요.';
 const WEAK_PASSWORD = `비밀번호는 ${PASSWORD_MIN}자 이상으로 입력해 주세요.`;
 const CODE_EXPIRED = '인증 시간이 지났어요. 인증번호를 다시 받아 주세요.';
+const PHONE_TAKEN = '이미 가입하신 전화번호입니다.';
+const NOT_REGISTERED = '가입되지 않은 전화번호입니다.';
 
 // 게이트웨이가 돌려준 오류 이름 → 어느 필드 아래에 어떤 문구로 보여 줄지. field 가 없으면 토스트
 const ERROR_VIEW = {
@@ -28,9 +29,11 @@ const ERROR_VIEW = {
   WeakPassword: { field: 'password', message: WEAK_PASSWORD },
   InvalidCredentials: { field: 'password', message: '비밀번호가 올바르지 않아요.' },
   InvalidCode: { field: 'code', message: '인증코드가 올바르지 않아요.' },
+  CodeExpired: { field: 'code', message: CODE_EXPIRED },
+  PhoneTaken: { field: 'phone', message: PHONE_TAKEN },
+  NotRegistered: { field: 'phone', message: NOT_REGISTERED },
   TooManyAttempts: { message: '요청이 너무 잦아요. 1분 뒤에 다시 시도해 주세요.' },
   SmsFailed: { message: '인증번호 문자를 보내지 못했어요. 잠시 후 다시 시도해 주세요.' },
-  PhoneLoginDisabled: { message: '전화번호 인증이 아직 열리지 않았어요.' },
   Network: { message: '네트워크 연결을 확인해 주세요.' },
 };
 const REDIRECT_ERRORS = {
@@ -139,8 +142,8 @@ function renderTimer() {
   if (expired) clearInterval(timerId);
 }
 
-function startVerification(mode) {
-  verification = { mode, expiresAt: Date.now() + SMS_CODE_TTL_SECONDS * 1000 };
+function startVerification({ mode, expiresInSeconds }) {
+  verification = { mode, expiresAt: Date.now() + expiresInSeconds * 1000 };
   setPasswordVisible(false);
   for (const input of [phoneInput, passwordInput]) {
     input.readOnly = true;
@@ -182,13 +185,13 @@ sendCodeButton.addEventListener('click', async () => {
 
   setBusy(true);
   const sending = verification
-    ? authGateway.resendCode(phoneInput.value, verification.mode)
+    ? authGateway.resendCode(phoneInput.value)
     : authGateway.requestCode(phoneInput.value, passwordInput.value);
   const result = await sending.catch(() => ({ ok: false, error: 'Unknown' }));
   setBusy(false);
 
   if (!result.ok) return showError(result.error);
-  startVerification(result.mode ?? verification.mode); // 재발송은 mode 가 그대로다
+  startVerification(result);
   showToast('인증번호를 문자로 보냈어요.');
 });
 
@@ -203,8 +206,8 @@ form.addEventListener('submit', async (event) => {
     return sendCodeButton.focus();
   }
   // 인증은 받았지만 누른 버튼이 번호의 상태와 맞지 않는 경우 (Figma 3번 화면)
-  if (action === 'signup' && verification.mode === 'login') return setFieldError(phoneInput, '이미 가입하신 전화번호입니다.');
-  if (action === 'login' && verification.mode === 'signup') return setFieldError(phoneInput, '가입되지 않은 전화번호입니다.');
+  if (action === 'signup' && verification.mode === 'login') return setFieldError(phoneInput, PHONE_TAKEN);
+  if (action === 'login' && verification.mode === 'signup') return setFieldError(phoneInput, NOT_REGISTERED);
   setFieldError(phoneInput, null);
 
   if (Date.now() >= verification.expiresAt) return setFieldError(codeInput, CODE_EXPIRED);
@@ -214,7 +217,7 @@ form.addEventListener('submit', async (event) => {
   }
 
   setBusy(true);
-  const result = await authGateway.verifyCode(phoneInput.value, codeInput.value).catch(() => ({ ok: false, error: 'Unknown' }));
+  const result = await authGateway.verifyCode(phoneInput.value, codeInput.value, action).catch(() => ({ ok: false, error: 'Unknown' }));
   if (result.ok) return location.replace('home'); // 인증이 끝나면 바로 로그인 상태다
   setBusy(false);
   showError(result.error);
@@ -228,9 +231,7 @@ document.querySelectorAll('[data-provider]').forEach((button) => {
     const providers = await providersReady;
     if (!providers) return showToast(SERVER_UNREACHABLE);
     if (!providers[name]) return showToast(`${PROVIDER_LABEL[name]} 간편 로그인은 아직 준비 중이에요.`);
-    // 돌아올 곳은 홈. 처음이면 가입, 이미 있으면 로그인된다
-    const result = await authGateway.startSocialLogin(name, new URL('home', location.href).href);
-    if (!result.ok) showToast(REDIRECT_ERRORS.social_failed);
+    authGateway.startSocialLogin(name); // 처음이면 가입, 이미 있으면 로그인되어 홈으로 돌아온다
   });
 });
 
@@ -241,6 +242,8 @@ if (redirectError) {
 }
 
 // 뒤로 가기로 캐시된 화면이 복원됐는데 이미 로그인 상태라면 홈으로 보낸다
-window.addEventListener('pageshow', (event) => {
-  if (event.persisted && localStorage.getItem(AUTH_STORAGE_KEY)) location.replace('home');
+window.addEventListener('pageshow', async (event) => {
+  if (!event.persisted) return;
+  const user = await authGateway.currentUser().catch(() => null);
+  if (user) location.replace('home');
 });

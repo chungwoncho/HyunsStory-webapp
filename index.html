@@ -6,11 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="theme-color" content="#f9fafc">
   <title>현즈 스토리</title>
-  <script>
-    // 자동 로그인: 저장된 세션이 있으면 가입 화면을 그리기 전에 홈으로 보낸다 (세션이 유효한지는 홈에서 확인)
-    // 'hyunsstory-auth' 는 config.js 의 AUTH_STORAGE_KEY 와 같아야 한다
-    try { if (localStorage.getItem('hyunsstory-auth')) location.replace('home'); } catch {}
-  </script>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="app.css">
