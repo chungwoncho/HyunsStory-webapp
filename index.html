@@ -20,17 +20,25 @@
     <!-- method=post: 스크립트가 아직 안 붙은 상태에서 제출돼도 비밀번호가 주소창(쿼리스트링)에 남지 않게 한다 -->
     <form class="auth-form" id="auth-form" method="post" novalidate>
       <div class="fields">
-        <label class="field">
-          <span class="sr-only">전화 번호</span>
-          <input class="field__input" id="phone" name="phone" type="tel" inputmode="numeric"
-                 autocomplete="username" maxlength="13" placeholder="전화 번호를 입력해 주세요." required>
-        </label>
-        <label class="field">
-          <span class="sr-only">비밀번호</span>
-          <input class="field__input" id="password" name="password" type="password"
-                 autocomplete="current-password" maxlength="72" placeholder="비밀번호를 입력하세요." required>
-          <img class="field__icon" src="assets/lock-fill.svg" alt="">
-        </label>
+        <div class="field-group">
+          <label class="field">
+            <span class="sr-only">전화 번호</span>
+            <input class="field__input" id="phone" name="phone" type="tel" inputmode="numeric"
+                   autocomplete="username" maxlength="17" placeholder="전화 번호를 입력해 주세요."
+                   aria-describedby="phone-error" required>
+          </label>
+          <p class="field-error" id="phone-error" role="alert" hidden></p>
+        </div>
+        <div class="field-group">
+          <label class="field">
+            <span class="sr-only">비밀번호</span>
+            <input class="field__input" id="password" name="password" type="password"
+                   autocomplete="current-password" maxlength="72" placeholder="비밀번호를 입력하세요."
+                   aria-describedby="password-error" required>
+            <img class="field__icon" src="assets/lock-fill.svg" alt="">
+          </label>
+          <p class="field-error" id="password-error" role="alert" hidden></p>
+        </div>
       </div>
 
       <div class="actions">
