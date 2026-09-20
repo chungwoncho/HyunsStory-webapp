@@ -2,28 +2,30 @@
 // 화면은 이 객체의 메서드와 오류 "이름"만 안다. Supabase 의 오류 코드 · 응답 모양은 여기서 끝난다.
 //
 // AuthGateway
-//   signUp(phone, password)  → { ok: true } | { ok: false, error }
-//   logIn(phone, password)   → { ok: true } | { ok: false, error }
+//   requestCode(phone, password) → { ok: true, mode: 'signup' | 'login' } | { ok: false, error }
+//        인증코드 SMS 를 보낸다. 처음 보는 번호면 가입 절차(signup), 가입된 번호면 비밀번호를 확인한 뒤 로그인 절차(login)
+//   resendCode(phone, mode)      → { ok: true } | { ok: false, error }
+//   verifyCode(phone, code)      → { ok: true } | { ok: false, error }   성공하면 로그인 상태가 된다
 //   logOut()                 → void
 //   currentUser()            → { phone, providers } | null        (자동 로그인 확인. 네트워크 오류면 throw)
 //   availableProviders()     → { kakao, apple, google } | null    (null = 서버에 닿지 못함)
 //   startSocialLogin(name, redirectTo) → { ok: true } | { ok: false, error }
 //
-// error: 'InvalidPhone' | 'WeakPassword' | 'PhoneTaken' | 'InvalidCredentials' | 'TooManyAttempts'
-//      | 'PhoneLoginDisabled' | 'ConfirmationRequired' | 'ProviderUnavailable' | 'Network' | 'Unknown'
-import { normalizePhone, toE164, PASSWORD_MIN, PASSWORD_MAX } from '../domain/phone.js';
+// error: 'InvalidPhone' | 'WeakPassword' | 'InvalidCredentials' | 'InvalidCode' | 'TooManyAttempts'
+//      | 'SmsFailed' | 'PhoneLoginDisabled' | 'ProviderUnavailable' | 'Network' | 'Unknown'
+import { normalizePhone, toE164, isVerificationCode, PASSWORD_MIN, PASSWORD_MAX } from '../domain/phone.js';
 
 const SOCIAL_PROVIDERS = ['kakao', 'apple', 'google'];
 
 const ERROR_BY_CODE = {
-  user_already_exists: 'PhoneTaken',
-  phone_exists: 'PhoneTaken',
   invalid_credentials: 'InvalidCredentials',
+  otp_expired: 'InvalidCode', // Supabase 는 틀린 코드와 만료된 코드를 같은 코드로 돌려준다
+  sms_send_failed: 'SmsFailed',
+  otp_disabled: 'PhoneLoginDisabled',
   weak_password: 'WeakPassword',
   validation_failed: 'InvalidPhone',
   phone_provider_disabled: 'PhoneLoginDisabled',
   signup_disabled: 'PhoneLoginDisabled',
-  phone_not_confirmed: 'ConfirmationRequired',
   provider_disabled: 'ProviderUnavailable',
   over_request_rate_limit: 'TooManyAttempts',
   over_sms_send_rate_limit: 'TooManyAttempts',
@@ -48,20 +50,41 @@ function readCredentials(phoneInput, password) {
 
 export function createSupabaseAuthGateway(client, { settingsUrl, publishableKey, fetchFn = globalThis.fetch } = {}) {
   return {
-    async signUp(phoneInput, password) {
+    async requestCode(phoneInput, password) {
       const input = readCredentials(phoneInput, password);
       if (!input.ok) return input;
-      const { data, error } = await client.auth.signUp(input.credentials);
-      if (error) return fail(toErrorName(error));
-      // 세션이 안 왔다면 프로젝트에 "전화번호 확인(SMS)"이 켜져 있는 것이다. 가입 즉시 로그인되지 않는다.
-      return data.session ? { ok: true } : fail('ConfirmationRequired');
+
+      // 가입 요청: 처음 보는 번호(또는 인증을 끝내지 않은 번호)면 회원을 만들고 인증코드를 보낸다
+      const signUp = await client.auth.signUp(input.credentials);
+      if (signUp.error) return fail(toErrorName(signUp.error));
+      if (!signUp.data.user) return fail('Unknown');
+      // 이미 가입된 번호면 Supabase 는 오류 대신 identities 가 빈 가짜 회원을 돌려주고 SMS 를 보내지 않는다
+      if (signUp.data.user.identities?.length) return { ok: true, mode: 'signup' };
+
+      // 가입된 번호: 비밀번호가 맞을 때만 코드를 보낸다 (남의 번호로 SMS 를 계속 보내지 못하게)
+      const logIn = await client.auth.signInWithPassword(input.credentials);
+      if (logIn.error) return fail(toErrorName(logIn.error));
+      await client.auth.signOut({ scope: 'local' }); // 인증코드를 확인하기 전에는 로그인 상태로 두지 않는다
+      const otp = await client.auth.signInWithOtp({ phone: input.credentials.phone, options: { shouldCreateUser: false } });
+      return otp.error ? fail(toErrorName(otp.error)) : { ok: true, mode: 'login' };
     },
 
-    async logIn(phoneInput, password) {
-      const input = readCredentials(phoneInput, password);
-      if (!input.ok) return input;
-      const { error } = await client.auth.signInWithPassword(input.credentials);
+    async resendCode(phoneInput, mode) {
+      const phone = normalizePhone(phoneInput);
+      if (!phone) return fail('InvalidPhone');
+      const { error } = mode === 'signup'
+        ? await client.auth.resend({ type: 'sms', phone: toE164(phone) })
+        : await client.auth.signInWithOtp({ phone: toE164(phone), options: { shouldCreateUser: false } });
       return error ? fail(toErrorName(error)) : { ok: true };
+    },
+
+    async verifyCode(phoneInput, code) {
+      const phone = normalizePhone(phoneInput);
+      if (!phone) return fail('InvalidPhone');
+      if (!isVerificationCode(code)) return fail('InvalidCode');
+      const { data, error } = await client.auth.verifyOtp({ phone: toE164(phone), token: code, type: 'sms' });
+      if (error) return fail(toErrorName(error));
+      return data.session ? { ok: true } : fail('Unknown');
     },
 
     async logOut() {

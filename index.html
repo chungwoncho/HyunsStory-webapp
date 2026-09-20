@@ -47,6 +47,17 @@
           </label>
           <p class="field-error" id="password-error" role="alert" hidden></p>
         </div>
+        <button class="btn btn--outline" id="send-code" type="button">인증번호 발송하기</button>
+      </div>
+
+      <div class="field-group" id="code-group" hidden>
+        <label class="field-label" for="code">인증코드</label>
+        <div class="field">
+          <input class="field__input" id="code" name="code" type="text" inputmode="numeric" pattern="[0-9]*"
+                 autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-describedby="code-error code-timer">
+        </div>
+        <p class="field-error" id="code-error" role="alert" hidden></p>
+        <p class="field-hint" id="code-timer" aria-live="off">03:00</p>
       </div>
 
       <div class="actions">

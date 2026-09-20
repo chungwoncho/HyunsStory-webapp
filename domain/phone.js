@@ -2,6 +2,16 @@
 
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 72;
+export const VERIFICATION_CODE_LENGTH = 6;
+
+// SMS 로 받은 인증코드 모양인가 (숫자 6자리)
+export const isVerificationCode = (value) => typeof value === 'string' && /^\d{6}$/.test(value);
+
+// 남은 초 → "03:00"
+export function formatCountdown(seconds) {
+  const s = Math.max(0, Math.ceil(seconds));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
 
 // 숫자 · 공백 · 하이픈 말고 다른 글자가 섞였는가
 export const hasNonDigits = (value) => /[^\d\s-]/.test(value);

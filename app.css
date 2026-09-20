@@ -1,13 +1,16 @@
 :root {
   /* Figma: Gray Scale */
   --white: #ffffff;
+  --gray2: #eff1f4;
   --gray3: #e4e6ea;
   --gray6: #9da0a8;
   --gray7: #7f828c;
+  --gray8: #5a5e6a;
   --bg: #f9fafc;
   --text: #393939;
   --text-strong: #3b3f4a;
   --primary: #3e606f;
+  --primary-p: #e5c3c3;    /* Primary/P — 인증번호 발송 버튼 */
   --black: #000000;
   --error: #e03028;        /* System Color/Error */
   --focus-border: #ead0cf; /* 입력 중인 필드 테두리 */
@@ -106,7 +109,24 @@ h1, p { margin: 0; }
   color: var(--error);
   font-size: 12px;
 }
-.field-error[hidden] { display: none; }
+.field-error[hidden], .field-group[hidden] { display: none; }
+
+/* 인증번호를 보낸 뒤에는 전화번호 · 비밀번호를 잠근다 (Figma 1:3465 의 회색 필드) */
+.field--locked { background: var(--gray2); }
+.field--locked .field__input { color: var(--gray8); cursor: pointer; }
+
+.field-label {
+  height: 21px;
+  color: var(--gray8);
+  font-size: 14px;
+  font-weight: 500;
+}
+.field-hint {
+  padding-left: 8px;
+  color: var(--gray7);
+  font-size: 12px;
+}
+.field-hint--expired { color: var(--error); }
 
 .field__input {
   flex: 1 0 0;
@@ -171,6 +191,8 @@ h1, p { margin: 0; }
 }
 .btn--primary { background: var(--primary); color: var(--white); }
 .btn--ghost { background: transparent; color: var(--text-strong); }
+/* Figma 1:3463 Button Fixed (L) outline: 안쪽 1px 선 */
+.btn--outline { background: transparent; box-shadow: inset 0 0 0 1px var(--primary-p); color: var(--primary-p); }
 .btn:active { opacity: 0.8; }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn:focus-visible, .social__btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
