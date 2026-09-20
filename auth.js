@@ -1,4 +1,7 @@
 import { showToast } from './toast.js';
+import { authGateway } from './di.js';
+import { AUTH_STORAGE_KEY } from './config.js';
+import { PASSWORD_MIN, formatPhone, hasNonDigits, normalizePhone } from './domain/phone.js';
 
 const form = document.getElementById('auth-form');
 const phoneInput = document.getElementById('phone');
@@ -6,10 +9,23 @@ const passwordInput = document.getElementById('password');
 const passwordToggle = document.getElementById('password-toggle');
 const buttons = form.querySelectorAll('button[type="submit"]');
 
-const PASSWORD_MIN = 8;
 const PROVIDER_LABEL = { kakao: '카카오', apple: 'Apple', google: 'Google' };
 const SERVER_UNREACHABLE = '서버에 연결할 수 없어요. 잠시 후 다시 시도해 주세요.';
 const DIGITS_ONLY = '숫자만 입력해 주세요.';
+const INVALID_PHONE = '전화 번호를 정확히 입력해 주세요.';
+const WEAK_PASSWORD = `비밀번호는 ${PASSWORD_MIN}자 이상으로 입력해 주세요.`;
+
+// 게이트웨이가 돌려준 오류 이름 → 어느 필드 아래에 어떤 문구로 보여 줄지. field 가 없으면 토스트
+const ERROR_VIEW = {
+  InvalidPhone: { field: 'phone', message: INVALID_PHONE },
+  PhoneTaken: { field: 'phone', message: '이미 가입하신 전화번호입니다.' },
+  WeakPassword: { field: 'password', message: WEAK_PASSWORD },
+  InvalidCredentials: { field: 'password', message: '전화 번호 또는 비밀번호가 올바르지 않아요.' },
+  TooManyAttempts: { message: '시도가 너무 많아요. 잠시 후 다시 시도해 주세요.' },
+  PhoneLoginDisabled: { message: '전화번호 가입이 아직 열리지 않았어요.' },
+  ConfirmationRequired: { message: '전화번호 인증이 필요한 상태예요. 관리자에게 문의해 주세요.' },
+  Network: { message: '네트워크 연결을 확인해 주세요.' },
+};
 const REDIRECT_ERRORS = {
   provider_unavailable: '간편 로그인은 아직 준비 중이에요.',
   social_failed: '간편 로그인에 실패했어요. 다시 시도해 주세요.',
@@ -23,18 +39,6 @@ function setFieldError(input, message) {
   errorText.textContent = message ?? '';
   errorText.hidden = !message;
 }
-
-// 01012345678 → 010 - 1234 - 5678 (10자리는 010 - 123 - 4567)
-function formatPhone(value) {
-  const d = value.replace(/\D/g, '').slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 7) return `${d.slice(0, 3)} - ${d.slice(3)}`;
-  if (d.length <= 10) return `${d.slice(0, 3)} - ${d.slice(3, 6)} - ${d.slice(6)}`;
-  return `${d.slice(0, 3)} - ${d.slice(3, 7)} - ${d.slice(7)}`;
-}
-
-// 숫자 · 공백 · 하이픈 말고 다른 글자가 섞였는가
-const hasNonDigits = (value) => /[^\d\s-]/.test(value);
 
 phoneInput.addEventListener('input', () => {
   if (hasNonDigits(phoneInput.value)) return setFieldError(phoneInput, DIGITS_ONLY);
@@ -93,8 +97,8 @@ function validate() {
   };
 
   if (hasNonDigits(phoneInput.value)) fail(phoneInput, DIGITS_ONLY);
-  else if (!/^01[016789]\d{7,8}$/.test(phoneInput.value.replace(/\D/g, ''))) fail(phoneInput, '전화 번호를 정확히 입력해 주세요.');
-  if (passwordInput.value.length < PASSWORD_MIN) fail(passwordInput, `비밀번호는 ${PASSWORD_MIN}자 이상으로 입력해 주세요.`);
+  else if (!normalizePhone(phoneInput.value)) fail(phoneInput, INVALID_PHONE);
+  if (passwordInput.value.length < PASSWORD_MIN) fail(passwordInput, WEAK_PASSWORD);
 
   firstInvalid?.focus();
   return !firstInvalid;
@@ -108,39 +112,32 @@ form.addEventListener('submit', async (event) => {
   setPasswordVisible(false); // 제출할 때는 다시 가린다 (화면에 남지 않게, 비밀번호 관리자가 저장할 수 있게)
 
   buttons.forEach((button) => { button.disabled = true; });
-  try {
-    const res = await fetch(`api/${action}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phoneInput.value, password: passwordInput.value }),
-    });
-    if (res.ok) return location.replace('home');
+  const send = action === 'login' ? authGateway.logIn : authGateway.signUp;
+  const result = await send(phoneInput.value, passwordInput.value).catch(() => ({ ok: false, error: 'Unknown' }));
+  if (result.ok) return location.replace('home'); // 가입하면 바로 로그인 상태다
 
-    // 정적 호스팅(GitHub Pages)처럼 API 서버가 없는 곳에서는 JSON 오류 본문이 오지 않는다
-    const body = await res.json().catch(() => ({}));
-    const input = { phone: phoneInput, password: passwordInput }[body.field];
-    if (input) {
-      setFieldError(input, body.error);
-      input.focus();
-    } else {
-      showToast(body.error ?? SERVER_UNREACHABLE);
-    }
-  } catch {
-    showToast('네트워크 연결을 확인해 주세요.');
+  const { field, message = SERVER_UNREACHABLE } = ERROR_VIEW[result.error] ?? {};
+  const input = { phone: phoneInput, password: passwordInput }[field];
+  if (input) {
+    setFieldError(input, message);
+    input.focus();
+  } else {
+    showToast(message);
   }
   buttons.forEach((button) => { button.disabled = false; });
 });
 
 // 키가 설정되지 않은 간편 로그인은 이동하지 않고 안내만 한다
-const providersReady = fetch('api/providers').then((res) => res.json()).catch(() => null);
-document.querySelectorAll('[data-provider]').forEach((link) => {
-  link.addEventListener('click', async (event) => {
-    event.preventDefault();
-    const name = link.dataset.provider;
+const providersReady = authGateway.availableProviders();
+document.querySelectorAll('[data-provider]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    const name = button.dataset.provider;
     const providers = await providersReady;
     if (!providers) return showToast(SERVER_UNREACHABLE);
     if (!providers[name]) return showToast(`${PROVIDER_LABEL[name]} 간편 로그인은 아직 준비 중이에요.`);
-    location.href = link.href;
+    // 돌아올 곳은 홈. 처음이면 가입, 이미 있으면 로그인된다
+    const result = await authGateway.startSocialLogin(name, new URL('home', location.href).href);
+    if (!result.ok) showToast(REDIRECT_ERRORS.social_failed);
   });
 });
 
@@ -151,8 +148,6 @@ if (redirectError) {
 }
 
 // 뒤로 가기로 캐시된 화면이 복원됐는데 이미 로그인 상태라면 홈으로 보낸다
-window.addEventListener('pageshow', async (event) => {
-  if (!event.persisted) return;
-  const res = await fetch('api/me').catch(() => null);
-  if (res?.ok) location.replace('home');
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted && localStorage.getItem(AUTH_STORAGE_KEY)) location.replace('home');
 });
