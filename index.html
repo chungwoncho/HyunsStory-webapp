@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <!-- maximum-scale=1: 14px 입력창에 포커스할 때 iOS 가 화면을 자동 확대하지 않도록 (핀치 줌은 그대로 가능) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#f9fafc">
+  <title>현즈 스토리</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <main class="screen">
+    <header class="intro">
+      <h1 class="intro__title">반가워요!</h1>
+      <p class="intro__desc">현즈 스토리의 회원이 되어주세요.</p>
+    </header>
+
+    <!-- method=post: 스크립트가 아직 안 붙은 상태에서 제출돼도 비밀번호가 주소창(쿼리스트링)에 남지 않게 한다 -->
+    <form class="auth-form" id="auth-form" method="post" novalidate>
+      <div class="fields">
+        <label class="field">
+          <span class="sr-only">전화 번호</span>
+          <input class="field__input" id="phone" name="phone" type="tel" inputmode="numeric"
+                 autocomplete="username" maxlength="13" placeholder="전화 번호를 입력해 주세요." required>
+        </label>
+        <label class="field">
+          <span class="sr-only">비밀번호</span>
+          <input class="field__input" id="password" name="password" type="password"
+                 autocomplete="current-password" maxlength="72" placeholder="비밀번호를 입력하세요." required>
+          <img class="field__icon" src="assets/lock-fill.svg" alt="">
+        </label>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn--primary" type="submit" name="action" value="signup">회원가입</button>
+        <button class="btn btn--ghost" type="submit" name="action" value="login">로그인</button>
+      </div>
+    </form>
+
+    <img class="divider" src="assets/divider.svg" alt="">
+
+    <nav class="social" aria-label="간편 로그인">
+      <a class="social__btn social__btn--kakao" href="auth/kakao" data-provider="kakao" aria-label="카카오로 간편 로그인">
+        <img src="assets/kakao-frame.svg" alt="">
+        <img src="assets/kakao-icon.png" alt="">
+      </a>
+      <a class="social__btn" href="auth/apple" data-provider="apple" aria-label="Apple로 간편 로그인">
+        <img src="assets/apple-button.png" alt="">
+      </a>
+      <a class="social__btn" href="auth/google" data-provider="google" aria-label="Google로 간편 로그인">
+        <img src="assets/google-button.png" alt="">
+      </a>
+    </nav>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="auth.js"></script>
+</body>
+</html>

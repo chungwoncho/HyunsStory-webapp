@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#f9fafc">
+  <title>현즈 스토리</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <main class="screen">
+    <header class="intro">
+      <h1 class="intro__title">반가워요!</h1>
+      <p class="intro__desc">현즈 스토리에 로그인되어 있어요.</p>
+    </header>
+
+    <section class="home-card">
+      <span class="home-card__label">로그인 계정</span>
+      <span class="home-card__value" id="account">&nbsp;</span>
+    </section>
+
+    <div class="actions">
+      <button class="btn btn--ghost" id="logout" type="button">로그아웃</button>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="home.js"></script>
+</body>
+</html>

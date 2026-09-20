@@ -1,0 +1,188 @@
+:root {
+  /* Figma: Gray Scale */
+  --white: #ffffff;
+  --gray3: #e4e6ea;
+  --gray6: #9da0a8;
+  --gray7: #7f828c;
+  --bg: #f9fafc;
+  --text: #393939;
+  --text-strong: #3b3f4a;
+  --primary: #3e606f;
+
+  /* Figma: 간격 */
+  --gap1: 16px;
+  --gap3: 24px;
+  --gap4: 28px;
+  --gap5: 40px;
+
+  --radius: 8px;
+  --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, p { margin: 0; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 시안 프레임 414px, 좌우 21px. 상단은 시안의 127px 에서 기기 상태바(47px)를 뺀 80px */
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap5);
+  width: 100%;
+  max-width: 414px;
+  margin: 0 auto;
+  padding: calc(80px + env(safe-area-inset-top)) 21px calc(40px + env(safe-area-inset-bottom));
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.intro__title { font-size: 20px; font-weight: 700; }
+.intro__desc { font-size: 16px; font-weight: 400; }
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap4);
+  width: 100%;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap3);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--white);
+  border-radius: var(--radius);
+  cursor: text;
+}
+.field:focus-within { box-shadow: inset 0 0 0 1px var(--primary); }
+
+.field__input {
+  flex: 1 0 0;
+  min-width: 1px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: 400 14px/1.5 var(--font);
+}
+.field__input::placeholder { color: var(--gray6); opacity: 1; }
+
+.field__icon { flex: none; width: 20px; height: 20px; }
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap1);
+  width: 100%;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius);
+  font: 600 16px/1.5 var(--font);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+.btn--primary { background: var(--primary); color: var(--white); }
+.btn--ghost { background: transparent; color: var(--text-strong); }
+.btn:active { opacity: 0.8; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn:focus-visible, .social__btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* 시안에서 높이 0 인 선: 위쪽으로 1px 그려지고 레이아웃 높이는 차지하지 않는다 */
+.divider { display: block; width: 100%; height: 1px; margin-top: -1px; }
+
+.social {
+  display: flex;
+  justify-content: center;
+  gap: min(80px, 14vw);
+  width: 100%;
+  height: 88px;
+}
+.social__btn {
+  display: grid;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+}
+.social__btn img {
+  grid-area: 1 / 1;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+}
+.social__btn:active { opacity: 0.8; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(32px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(372px, calc(100vw - 42px));
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--text-strong);
+  color: var(--white);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* 홈 */
+.home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 20px 16px;
+  background: var(--white);
+  border-radius: var(--radius);
+}
+.home-card__label { color: var(--gray7); font-size: 14px; }
+.home-card__value { font-size: 16px; font-weight: 600; }
