@@ -3,7 +3,8 @@ import { showToast } from './toast.js';
 const form = document.getElementById('auth-form');
 const phoneInput = document.getElementById('phone');
 const passwordInput = document.getElementById('password');
-const buttons = form.querySelectorAll('button');
+const passwordToggle = document.getElementById('password-toggle');
+const buttons = form.querySelectorAll('button[type="submit"]');
 
 const PASSWORD_MIN = 8;
 const PROVIDER_LABEL = { kakao: '카카오', apple: 'Apple', google: 'Google' };
@@ -46,6 +47,39 @@ phoneInput.addEventListener('blur', () => {
 });
 passwordInput.addEventListener('input', () => setFieldError(passwordInput, null));
 
+// 자물쇠를 누르면 비밀번호가 보이고(열린 자물쇠), 다시 누르면 가려진다
+function setPasswordVisible(visible) {
+  passwordInput.type = visible ? 'text' : 'password';
+  passwordToggle.setAttribute('aria-pressed', String(visible));
+  passwordToggle.setAttribute('aria-label', visible ? '비밀번호 숨기기' : '비밀번호 보기');
+  passwordToggle.querySelector('img').src = visible ? 'assets/lock-unlock-fill.svg' : 'assets/lock-fill.svg';
+}
+// 입력창의 포커스(모바일 키보드)와 커서 위치를 잃지 않도록 버튼이 포커스를 가져가지 못하게 한다
+passwordToggle.addEventListener('mousedown', (event) => event.preventDefault());
+passwordToggle.addEventListener('click', () => {
+  const { selectionStart, selectionEnd } = passwordInput;
+  setPasswordVisible(passwordInput.type === 'password');
+  passwordInput.focus();
+  restoreCaret(selectionStart, selectionEnd);
+});
+
+// type 을 바꾸면 Chrome 은 다음 렌더링 때 입력창 내부를 다시 만들면서 커서를 맨 앞으로 되돌린다.
+// 그 되돌림(selectionchange)이 일어난 직후에 원래 자리로 옮긴다. 되돌림이 없는 브라우저를 위해 바로 한 번 옮겨 둔다.
+function restoreCaret(start, end) {
+  passwordInput.setSelectionRange(start, end);
+  const stop = new AbortController();
+  document.addEventListener('selectionchange', () => {
+    if (document.activeElement !== passwordInput || passwordInput.selectionStart !== 0 || start === 0) return;
+    stop.abort();
+    passwordInput.setSelectionRange(start, end);
+  }, { signal: stop.signal });
+  // 사용자가 직접 입력하거나 커서를 옮기기 시작하면 더는 건드리지 않는다
+  for (const type of ['keydown', 'pointerdown', 'blur']) {
+    passwordInput.addEventListener(type, () => stop.abort(), { signal: stop.signal });
+  }
+  setTimeout(() => stop.abort(), 500);
+}
+
 // 틀린 필드에 오류를 표시하고, 제출해도 되는지 돌려준다
 function validate() {
   // 이전 제출에서 서버가 돌려준 오류("이미 가입하신…")가 남아 있지 않게 먼저 지운다
@@ -71,6 +105,7 @@ form.addEventListener('submit', async (event) => {
   // Enter 로 제출하면 submitter 는 첫 번째 제출 버튼(회원가입)이 된다
   const action = event.submitter?.value === 'login' ? 'login' : 'signup';
   if (!validate()) return;
+  setPasswordVisible(false); // 제출할 때는 다시 가린다 (화면에 남지 않게, 비밀번호 관리자가 저장할 수 있게)
 
   buttons.forEach((button) => { button.disabled = true; });
   try {

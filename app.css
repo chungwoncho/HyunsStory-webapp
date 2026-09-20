@@ -130,7 +130,23 @@ h1, p { margin: 0; }
   letter-spacing: -1px;
 }
 
-.field__icon { flex: none; width: 20px; height: 20px; }
+.field__icon { display: block; flex: none; width: 20px; height: 20px; }
+
+/* 자물쇠 = 비밀번호 보기 버튼. 보이는 크기는 시안의 20px 그대로 두고, 누르는 영역만 44px 로 넓힌다 */
+.field__toggle {
+  position: relative;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.field__toggle::before { content: ''; position: absolute; inset: -12px; }
+.field__toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 .actions {
   display: flex;
